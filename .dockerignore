@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+**/*.suo
+**/appsettings.*.json
+!**/appsettings.example.json
+.git/
+.gitignore
+test-api.ps1
+upload-to-github.ps1
+README.md

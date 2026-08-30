@@ -1,0 +1,40 @@
+## .NET build artifacts
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+
+## Logs (top-level, written by start.ps1)
+*.log
+*.log.err
+
+## Local secrets / overrides
+appsettings.*.local.json
+.env
+.env.*
+secrets.json
+*.pfx
+*.p12
+*.key
+
+## OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## IDE
+.idea/
+*.swp
+*.swo
+
+## Python (split-schema.py tooling)
+__pycache__/
+*.pyc
+.pytest_cache/
+
+## Database
+*.db
+*.sqlite
+*.sqlite3
