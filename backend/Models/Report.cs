@@ -58,4 +58,10 @@ public record RawReportData
 
     /// <summary>未加工的原始 JSON（供 AI 参考）</summary>
     public string RawJson { get; init; } = "";
+
+    /// <summary>
+    /// true = 真实接口不可用/无法识别交易所，当前数据是演示用模拟数据。
+    /// 调用方（前端、AI 摘要）必须检查这个字段，不能把模拟数据当真实财报展示。
+    /// </summary>
+    public bool IsMock { get; init; } = false;
 }

@@ -21,8 +21,17 @@ public class ReportService : IReportService
     {
         _logger.LogInformation("获取财报数据，股票: {StockCode}", stockCode);
 
+        // 东方财富该接口只覆盖 A 股，且要求带正确的交易所前缀（SH/SZ）。
+        // 无法判断交易所时（如港股 5 位代码），直接走模拟数据，不瞎猜前缀。
+        var prefix = GetMarketPrefix(stockCode);
+        if (prefix == null)
+        {
+            _logger.LogInformation("股票代码 {Code} 不是可识别的 A 股代码，无法确定交易所，使用模拟数据", stockCode);
+            return GetMockData(stockCode);
+        }
+
         // 东方财富 F9 财务概况接口（不需要登录）
-        var url = $"https://emweb.securities.eastmoney.com/PC_HSF10/NewFinanceAnalysis/ZYZBAjaxNew?type=0&code=SH{stockCode}";
+        var url = $"https://emweb.securities.eastmoney.com/PC_HSF10/NewFinanceAnalysis/ZYZBAjaxNew?type=0&code={prefix}{stockCode}";
 
         try
         {
@@ -65,6 +74,26 @@ public class ReportService : IReportService
             prop.ValueKind == JsonValueKind.Number)
             return prop.GetDecimal();
         return 0m;
+    }
+
+    /// <summary>
+    /// 根据 6 位 A 股代码判断交易所前缀。返回 null 表示无法识别
+    /// （非 6 位数字代码，如港股 "00700"，或不属于已知板块段），调用方应改用模拟数据。
+    /// </summary>
+    private static string? GetMarketPrefix(string stockCode)
+    {
+        if (stockCode.Length != 6 || !stockCode.All(char.IsDigit))
+            return null;
+
+        // 上交所：60(主板) / 68(科创板) / 90(B股)
+        if (stockCode.StartsWith("60") || stockCode.StartsWith("68") || stockCode.StartsWith("90"))
+            return "SH";
+
+        // 深交所：00(主板) / 30(创业板) / 20(B股)
+        if (stockCode.StartsWith("00") || stockCode.StartsWith("30") || stockCode.StartsWith("20"))
+            return "SZ";
+
+        return null;
     }
 
     /// <summary>
@@ -113,7 +142,7 @@ public class ReportService : IReportService
                 GrossMargin = 8.6m, DebtRatio = 58.4m, EPS = -0.86m, RawJson = "{}" }
         };
 
-        return mockData.GetValueOrDefault(stockCode, new RawReportData
+        var result = mockData.GetValueOrDefault(stockCode, new RawReportData
         {
             StockCode = stockCode,
             CompanyName = $"股票{stockCode}",
@@ -127,6 +156,9 @@ public class ReportService : IReportService
             EPS = 0.5m,
             RawJson = "{}"
         });
+
+        // 无论命中哪个分支，都是演示数据，必须标记，不能冒充真实财报
+        return result with { IsMock = true };
     }
 }
 

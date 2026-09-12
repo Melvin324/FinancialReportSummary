@@ -84,6 +84,10 @@ public class MiniMaxService : IMiniMaxService
                               .GetProperty("content")
                               .GetString() ?? "摘要生成失败，请稍后重试。";
 
+        // 真实数据源不可用时用的是模拟数据，必须在摘要里明确提示，不能让人误以为是真实财报
+        if (data.IsMock)
+            summary = "> ⚠️ **以下为模拟演示数据**，真实财报接口暂不可用或该股票代码无法识别所属交易所，请勿作为投资参考。\n\n" + summary;
+
         return summary;
     }
 }

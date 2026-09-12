@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using FinancialReportSummary.Api.Models;
 
 namespace FinancialReportSummary.Api.Services;
 
