@@ -23,10 +23,13 @@ public class MiniMaxService : IMiniMaxService
     {
         // 优先级：环境变量 > appsettings 配置
         // 推荐通过环境变量 MINIMAX_API_KEY 注入，避免密钥泄露到 Git
-        var apiKey = Environment.GetEnvironmentVariable("MINIMAX_API_KEY")
-                     ?? _config["MiniMax:ApiKey"]
-                     ?? throw new InvalidOperationException(
-                         "未配置 MiniMax API Key。请设置环境变量 MINIMAX_API_KEY，或在 appsettings.Development.json 中配置 MiniMax:ApiKey");
+        // 注意：appsettings.json 里 ApiKey 默认是 ""（空字符串，不是 null），
+        // 用 ?? 判断 null 会漏掉这种情况，必须显式检查空白字符串
+        var apiKey = Environment.GetEnvironmentVariable("MINIMAX_API_KEY");
+        if (string.IsNullOrWhiteSpace(apiKey)) apiKey = _config["MiniMax:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException(
+                "未配置 MiniMax API Key。请设置环境变量 MINIMAX_API_KEY，或在 appsettings.Development.json 中配置 MiniMax:ApiKey");
 
         var baseUrl = Environment.GetEnvironmentVariable("MINIMAX_BASE_URL")
                      ?? _config["MiniMax:BaseUrl"]
@@ -52,7 +55,7 @@ public class MiniMaxService : IMiniMaxService
             **一句话结论**：（一句话描述整体业绩）
             **亮点**：（2-3 个）
             **风险提示**：（1-2 个）
-            **综合评级**：⭐⭐⭐⭐☆（4星）
+            **综合评级**：（根据以上数据打 1-5 颗星，星数必须反映真实表现，不要固定给某个星级，格式如 ⭐⭐⭐☆☆（3星））
             """;
 
         var requestBody = new
@@ -79,15 +82,27 @@ public class MiniMaxService : IMiniMaxService
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
-        var summary = json.GetProperty("choices")[0]
+
+        // MiniMax 对业务级错误（配额、鉴权、内容审核等）经常是 HTTP 200 + 错误体，
+        // 不会走到上面的 EnsureSuccessStatusCode。这里显式检查 choices 是否存在，
+        // 避免 GetProperty 抛出一个对用户没有意义的 KeyNotFoundException。
+        if (!json.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
+        {
+            var errMsg = json.TryGetProperty("base_resp", out var baseResp) &&
+                         baseResp.TryGetProperty("status_msg", out var msgProp)
+                ? msgProp.GetString()
+                : "MiniMax 返回了非预期的响应格式";
+            _logger.LogWarning("MiniMax 响应缺少 choices 字段: {Json}", json.GetRawText());
+            throw new InvalidOperationException($"MiniMax 摘要生成失败: {errMsg}");
+        }
+
+        var summary = choices[0]
                               .GetProperty("message")
                               .GetProperty("content")
                               .GetString() ?? "摘要生成失败，请稍后重试。";
 
-        // 真实数据源不可用时用的是模拟数据，必须在摘要里明确提示，不能让人误以为是真实财报
-        if (data.IsMock)
-            summary = "> ⚠️ **以下为模拟演示数据**，真实财报接口暂不可用或该股票代码无法识别所属交易所，请勿作为投资参考。\n\n" + summary;
-
+        // 模拟数据的提示交给前端的 isMock 横幅统一展示（更醒目、不依赖文本解析）；
+        // 这里不再往摘要正文里塞一遍，避免橙色横幅 + 正文重复提示两次。
         return summary;
     }
 }
