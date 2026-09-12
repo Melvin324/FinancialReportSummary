@@ -167,7 +167,7 @@ function Invoke-Start {
     if (-not $dotnetExe) { $dotnetExe = (Get-Command dotnet -ErrorAction SilentlyContinue).Source }
     if (-not $dotnetExe) { $dotnetExe = 'dotnet' }
     # 没有 launchSettings.json，dotnet run 不会自动把环境设成 Development，
-    # 不设这个的话 appsettings.Development.json（包括本地的 MiniMax key）永远不会被加载，
+    # 不设这个的话 appsettings.Development.json（包括本地的 AI 服务 key）永远不会被加载，
     # 会一直读 appsettings.json 的空 ApiKey，报"未配置"但看起来像是 key 没生效
     $env:ASPNETCORE_ENVIRONMENT = 'Development'
     $backendProc = Start-Process -FilePath $dotnetExe `

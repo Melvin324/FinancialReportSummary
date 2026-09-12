@@ -39,7 +39,7 @@ $commitMsg = @"
 feat: 财报智能摘要 MVP
 
 - .NET 8 Minimal API
-- MiniMax Text 集成
+- AI 摘要集成
 - 静态前端页面
 - 模拟数据降级
 "@

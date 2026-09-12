@@ -4,9 +4,10 @@ using FinancialReportSummary.Api.Models;
 namespace FinancialReportSummary.Api.Services;
 
 /// <summary>
-/// IAiSummaryService 的当前实现（底层调用 MiniMax）。厂商特有的部分只有这里：
-/// 鉴权 header、请求/响应的 JSON 形状、model 名字。prompt 内容和对外接口
-/// 都是通用的（见 SummaryPromptBuilder / IAiSummaryService），换厂商只需要
+/// IAiSummaryService 的当前实现。厂商特有的部分只有这里：鉴权 header、
+/// 请求/响应的 JSON 形状、model 名字，且这些全部来自配置，代码里不写死
+/// 具体供应商。prompt 内容和对外接口都是通用的
+/// （见 SummaryPromptBuilder / IAiSummaryService），换供应商只需要
 /// 新增一个实现类，不用改调用方。
 /// </summary>
 public class AiSummaryService : IAiSummaryService
@@ -25,19 +26,25 @@ public class AiSummaryService : IAiSummaryService
     public async Task<string> GenerateSummaryAsync(RawReportData data, CancellationToken ct = default)
     {
         // 优先级：环境变量 > appsettings 配置
-        // 推荐通过环境变量 API_KEY 注入，避免密钥泄露到 Git
+        // 推荐通过环境变量注入，避免密钥泄露到 Git
         // 注意：appsettings.json 里 ApiKey 默认是 ""（空字符串，不是 null），
         // 用 ?? 判断 null 会漏掉这种情况，必须显式检查空白字符串
         var apiKey = Environment.GetEnvironmentVariable("API_KEY");
-        if (string.IsNullOrWhiteSpace(apiKey)) apiKey = _config["MiniMax:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey)) apiKey = _config["AiSummary:ApiKey"];
         if (string.IsNullOrWhiteSpace(apiKey))
             throw new InvalidOperationException(
-                "未配置 API Key。请设置环境变量 API_KEY，或在 appsettings.Development.json 中配置 MiniMax:ApiKey");
+                "未配置 API Key。请设置环境变量 API_KEY，或在 appsettings.Development.json 中配置 AiSummary:ApiKey");
 
-        var baseUrl = Environment.GetEnvironmentVariable("MINIMAX_BASE_URL")
-                     ?? _config["MiniMax:BaseUrl"]
-                     ?? "https://api.minimax.chat";
-        var model = _config["MiniMax:Model"] ?? "MiniMax-Text-01";
+        // BaseUrl/Model 不设默认值——具体用哪家服务完全由配置决定，代码里不出现供应商名字
+        var baseUrl = Environment.GetEnvironmentVariable("BASE_URL") ?? _config["AiSummary:BaseUrl"];
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            throw new InvalidOperationException(
+                "未配置服务地址。请设置环境变量 BASE_URL，或在 appsettings.Development.json 中配置 AiSummary:BaseUrl");
+
+        var model = _config["AiSummary:Model"];
+        if (string.IsNullOrWhiteSpace(model))
+            throw new InvalidOperationException(
+                "未配置模型名。请在 appsettings.Development.json 中配置 AiSummary:Model");
 
         var requestBody = new
         {
@@ -64,7 +71,7 @@ public class AiSummaryService : IAiSummaryService
 
         var json = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
 
-        // MiniMax 对业务级错误（配额、鉴权、内容审核等）经常是 HTTP 200 + 错误体，
+        // 上游对业务级错误（配额、鉴权、内容审核等）经常是 HTTP 200 + 错误体，
         // 不会走到上面的 EnsureSuccessStatusCode。这里显式检查 choices 是否存在，
         // 避免 GetProperty 抛出一个对用户没有意义的 KeyNotFoundException。
         if (!json.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)

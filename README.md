@@ -1,8 +1,8 @@
 # 财报智能摘要 MVP — 后端
 
-> 输入股票代码 / 公司名 / 拼音，AI 自动生成财报投资摘要。.NET 8 + EF Core + PostgreSQL + Ocelot Gateway + MiniMax Text API。
+> 输入股票代码 / 公司名 / 拼音，AI 自动生成财报投资摘要。.NET 8 + EF Core + PostgreSQL + Ocelot Gateway + 可插拔 AI 摘要服务。
 
-![arch](https://img.shields.io/badge/.NET-8.0-512BD4) ![db](https://img.shields.io/badge/PostgreSQL-18-336791) ![gw](https://img.shields.io/badge/Ocelot-23.4.3-blue) ![ai](https://img.shields.io/badge/MiniMax-Text--01-orange)
+![arch](https://img.shields.io/badge/.NET-8.0-512BD4) ![db](https://img.shields.io/badge/PostgreSQL-18-336791) ![gw](https://img.shields.io/badge/Ocelot-23.4.3-blue) ![ai](https://img.shields.io/badge/AI-Summary-orange)
 
 ## 项目亮点（面试叙事）
 
@@ -19,7 +19,7 @@
 Browser (React 19)  →  Ocelot Gateway :5000  →  ASP.NET Core API :5050
                                                   ├─ CompanySearchService  (本地 230+ 字典 → East Money suggest)
                                                   ├─ ReportService         (East Money ZYZBAjaxNew → 模拟数据兜底)
-                                                  ├─ MiniMaxService        (AI 摘要生成)
+                                                  ├─ AiSummaryService      (AI 摘要生成，供应商可插拔)
                                                   └─ StorageService        (EF Core → PostgreSQL)
 ```
 
@@ -41,7 +41,7 @@ backend/
 │   ├── CompanySearchService.cs     # 本地 230+ 标的公司库
 │   ├── EastMoneyService.cs         # 东方财富 suggest API 兜底
 │   ├── ReportService.cs            # 财报数据（East Money → mock 兜底）
-│   └── MiniMaxService.cs           # MiniMax Text API 调用
+│   └── AiSummaryService.cs         # AI 摘要服务调用（供应商由配置决定）
 ├── Gateway/
 │   ├── Gateway.csproj              # Ocelot 反向代理项目
 │   ├── Program.cs                  # 自定义根页面 + 限流 + 日志
@@ -67,7 +67,7 @@ backend/
 
 - .NET 8 SDK
 - PostgreSQL 14+ （推荐 18）
-- MiniMax API Key（注册地址：https://api.minimax.chat）
+- 一个 AI 摘要服务的 API Key（任意兼容 OpenAI 风格 chat completion 接口的供应商均可，具体地址/模型名在配置里指定）
 
 ### 1. 准备数据库
 
@@ -79,12 +79,21 @@ psql -U postgres -c "CREATE DATABASE financial_report;"
 ### 2. 配置环境变量
 
 ```powershell
-$env:API_KEY = "sk-cp-你的key"
+$env:API_KEY = "你的key"
+$env:BASE_URL = "你的 AI 服务地址"
 ```
+
+模型名（`AiSummary:Model`）目前只能在 `appsettings.Development.json` 里配置，还没做环境变量映射。
 
 ### 3. 启动（首次会自动跑 EF 迁移建表）
 
+项目没有 `launchSettings.json`，`dotnet run` 默认是 `Production` 环境，不会加载
+`appsettings.Development.json`——本地调试必须显式设 `ASPNETCORE_ENVIRONMENT=Development`，
+否则 Key/BaseUrl/Model 配置不会生效（`start.ps1` 已经处理好这一步，手动起服务才需要自己加）：
+
 ```powershell
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+
 # 后端 API
 dotnet run --project backend/Api.csproj --urls http://localhost:5050
 
@@ -131,7 +140,7 @@ modelBuilder.Entity<SummaryEntity>(b => {
 
 ## 已知限制
 
-- 东方财富 `ZYZBAjaxNew` 财报接口近期 `KeyNotPresent`，自动降级到模拟数据（`ReportService.cs` 内置 10 家公司 mock）
+- 东方财富 `ZYZBAjaxNew` 财报接口只覆盖沪深 A 股（`ReportService.cs` 按代码前缀识别 SH/SZ），识别不出交易所（如港股）或接口本身失败时降级到模拟数据（内置 10 家公司 mock），响应里 `rawData.isMock` 会标记为 `true`
 - 摘要缓存 24h 硬编码，未来可改 `appsettings` 可配
 
 ## Roadmap
@@ -144,4 +153,4 @@ modelBuilder.Entity<SummaryEntity>(b => {
 
 ---
 
-🤖 Powered by [MiniMax Text API](https://api.minimax.chat)
+🤖 AI 摘要由可配置的第三方大模型服务生成

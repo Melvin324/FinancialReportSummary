@@ -31,7 +31,8 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
       - API_KEY=${API_KEY}
-      - MINIMAX_BASE_URL=https://api.minimax.chat
+      - BASE_URL=${BASE_URL}
+      - AiSummary__Model=${AI_MODEL}
       - ConnectionStrings__Postgres=Host=postgres;Port=5432;Database=financial_report;Username=postgres;Password=postgres123
     ports:
       - "5000:8080"
