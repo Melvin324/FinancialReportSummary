@@ -11,7 +11,7 @@ var connStr = builder.Configuration.GetConnectionString("Postgres")
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(connStr));
 
 // 注册服务
-builder.Services.AddHttpClient<IMiniMaxService, MiniMaxService>();
+builder.Services.AddHttpClient<IAiSummaryService, AiSummaryService>();
 builder.Services.AddSingleton<IReportService, ReportService>();
 builder.Services.AddHttpClient<IEastMoneyService, EastMoneyService>();
 builder.Services.AddSingleton<ICompanySearchService, CompanySearchService>();
@@ -81,7 +81,7 @@ app.MapGet("/api/search", (string q, ICompanySearchService searchService) =>
 app.MapPost("/api/summary", async (
     SummaryRequest request,
     IReportService reportService,
-    IMiniMaxService miniMaxService,
+    IAiSummaryService aiSummaryService,
     ICompanySearchService searchService,
     IStorageService storage,
     ILogger<Program> logger,
@@ -148,7 +148,14 @@ app.MapPost("/api/summary", async (
 
         // 3. 缓存未命中 → 拉数据 + 调 AI
         var rawData = await reportService.GetFinancialReportAsync(stockCode, ct);
-        var summary = await miniMaxService.GenerateSummaryAsync(rawData, ct);
+
+        // 数据源（尤其是模拟数据兜底）不一定认识这家公司，会用 "股票{code}" 占位；
+        // 但公司名其实我们在第 1 步已经解析过了，这里必须回填，
+        // 否则 AI 摘要标题/正文里会出现占位符而不是真实公司名
+        if (!string.IsNullOrEmpty(resolvedName) && rawData.CompanyName != resolvedName)
+            rawData = rawData with { CompanyName = resolvedName };
+
+        var summary = await aiSummaryService.GenerateSummaryAsync(rawData, ct);
 
         var response = new SummaryResponse
         {

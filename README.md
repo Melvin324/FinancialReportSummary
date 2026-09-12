@@ -79,7 +79,7 @@ psql -U postgres -c "CREATE DATABASE financial_report;"
 ### 2. 配置环境变量
 
 ```powershell
-$env:MINIMAX_API_KEY = "sk-cp-你的key"
+$env:API_KEY = "sk-cp-你的key"
 ```
 
 ### 3. 启动（首次会自动跑 EF 迁移建表）
@@ -124,7 +124,7 @@ modelBuilder.Entity<SummaryEntity>(b => {
 
 ## 安全
 
-- ✅ API Key 从 `MINIMAX_API_KEY` 环境变量读取，配置文件不留痕
+- ✅ API Key 从 `API_KEY` 环境变量读取，配置文件不留痕
 - ✅ `appsettings.json` 包含的 `postgres123` 仅用于本地开发，生产请改用 `appsettings.Production.json` 或 env 注入
 - ✅ 网关限流 30 req/min，防止滥用
 - ✅ 搜索历史按 `resolved_stock_code` 去重，避免 AI token 浪费

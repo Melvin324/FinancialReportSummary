@@ -45,9 +45,9 @@ try {
     $err = $_.Exception.Message
     Write-Host "❌ 摘要接口失败: $err" -ForegroundColor Red
     if ($err -match '401|unauthorized') {
-        Write-Host "  提示: 检查 MINIMAX_API_KEY 是否正确设置" -ForegroundColor Yellow
-    } elseif ($err -match 'MINIMAX_API_KEY') {
-        Write-Host "  提示: 请先设置环境变量 `$env:MINIMAX_API_KEY='sk-cp-...'" -ForegroundColor Yellow
+        Write-Host "  提示: 检查 API_KEY 是否正确设置" -ForegroundColor Yellow
+    } elseif ($err -match 'API_KEY') {
+        Write-Host "  提示: 请先设置环境变量 `$env:API_KEY='sk-cp-...'" -ForegroundColor Yellow
     }
 }
 

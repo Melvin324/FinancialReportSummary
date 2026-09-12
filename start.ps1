@@ -64,14 +64,14 @@ function Start-Postgres {
 }
 
 function Ensure-ApiKey {
-    if (-not $env:MINIMAX_API_KEY) {
-        Write-Host "  [ERROR] MINIMAX_API_KEY not set." -ForegroundColor Red
+    if (-not $env:API_KEY) {
+        Write-Host "  [ERROR] API_KEY not set." -ForegroundColor Red
         Write-Host "  Set it before running:" -ForegroundColor Yellow
-        Write-Host "    `$env:MINIMAX_API_KEY = 'sk-cp-你的key'" -ForegroundColor Gray
+        Write-Host "    `$env:API_KEY = 'sk-cp-你的key'" -ForegroundColor Gray
         Write-Host "  Or put it in backend/appsettings.Development.json (NOT committed)." -ForegroundColor Gray
         exit 1
     }
-    Write-Host "  [OK] MINIMAX_API_KEY set" -ForegroundColor Green
+    Write-Host "  [OK] API_KEY set" -ForegroundColor Green
 }
 
 function Invoke-Build {
